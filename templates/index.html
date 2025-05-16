@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captura de Imagem</title>
+</head>
+<body>
+    <h1>Captura de Imagem</h1>
+    
+    <video id="video" width="640" height="480" autoplay></video><br>
+    <button id="capture">Capturar Imagem</button><br><br>
+    
+    <canvas id="canvas" style="display:none;"></canvas>
+    <img id="snapshot" alt="Snapshot" width="640" height="480"/>
+
+    <button id="upload">Enviar</button>
+
+    <h2>Resultado:</h2>
+    <p><strong>Texto extraído:</strong> <span id="text">Nenhum texto extraído ainda.</span></p>
+    <p><strong>Resumo:</strong> <span id="summary">Nenhum resumo disponível ainda.</span></p>
+
+    <audio id="audioPlayer" controls style="display:none;"></audio>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const snapshot = document.getElementById('snapshot');
+        const captureButton = document.getElementById('capture');
+        const uploadButton = document.getElementById('upload');
+        const extractedTextElement = document.getElementById('text');
+        const summaryElement = document.getElementById('summary');
+        let capturedImage = null;
+
+        // Acessar a câmera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                video.srcObject = stream;
+            })
+            .catch(function(error) {
+                console.error("Erro ao acessar a câmera:", error);
+            });
+
+        // Capturar a imagem
+        captureButton.addEventListener('click', function() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedImage = canvas.toDataURL('image/jpeg');
+            snapshot.src = capturedImage;
+        });
+
+        // Enviar a imagem para o servidor
+        uploadButton.addEventListener('click', function() {
+            if (!capturedImage) {
+                alert("Primeiro capture a imagem.");
+                return;
+            }
+
+            fetch('/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: capturedImage })
+            })
+            .then(response => response.json())
+
+            .then(data => {
+    if (data.error) {
+        alert("Erro: " + data.error);
+        return;
+    }
+
+    const audioPlayer = document.getElementById("audioPlayer");
+    audioPlayer.src = data.audio_url;
+    audioPlayer.style.display = "block";
+    audioPlayer.play();
+
+    // Exibir os resultados na página
+    extractedTextElement.textContent = data.extracted_text;
+    summaryElement.textContent = data.summary;
+})
+
+            .catch(error => {
+                console.error("Erro ao enviar imagem:", error);
+            });
+        });    </script>
+</body>
+</html>
